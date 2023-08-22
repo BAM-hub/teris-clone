@@ -3,25 +3,25 @@ import "./style.css";
 const app = document.querySelector<HTMLDivElement>("#app");
 
 const shapes = [
-  // {
-  //   name: "square",
-  //   shape: [
-  //     [1, 1],
-  //     [1, 1],
-  //   ],
-  // },
-  // {
-  //   name: "line",
-  //   shape: [[1, 1, 1, 1]],
-  // },
-  // {
-  //   name: "L",
-  //   shape: [
-  //     [1, 0],
-  //     [1, 0],
-  //     [1, 1],
-  //   ],
-  // },
+  {
+    name: "square",
+    shape: [
+      [1, 1],
+      [1, 1],
+    ],
+  },
+  {
+    name: "line",
+    shape: [[1, 1, 1, 1]],
+  },
+  {
+    name: "L",
+    shape: [
+      [1, 0],
+      [1, 0],
+      [1, 1],
+    ],
+  },
   {
     name: "T",
     shape: [
@@ -71,50 +71,95 @@ const currentShape = {
     row: 0,
     cell: 0,
   },
+  previousPosition: {
+    row: 0,
+    cell: 0,
+  },
+  shape: [] as number[][],
+
+  isMoveLocked: false,
+  isFirstFrameAfterMoving: false,
 };
 
-function animateShape(shape: number[][]) {
-  const shapeLength = shape.length;
-  const shapeWidth = shape[0].length;
-  for (let i = 0; i < shapeLength; i++) {
-    for (let u = 0; u < shapeWidth; u++) {
-      if (i + currentShape.position?.row - 1 + shapeLength > 9) {
-        break;
-      }
-      if (
-        i + currentShape.position?.row - 1 > 9 ||
-        i + currentShape.position?.row - 1 < 0
-      ) {
-        break;
-      }
-
-      gridFillArray[i + currentShape.position?.row - 1][u] = 0;
-    }
+function removePrevFrame(i: number, u: number) {
+  if (
+    i + currentShape.position?.row - 1 > 9 ||
+    i + currentShape.position?.row - 1 < 0
+  ) {
+    return;
   }
 
+  // console.log(u);
+  gridFillArray[i + currentShape.position?.row - 1][
+    currentShape.position.cell + u
+  ] = 0;
+
+  if (currentShape.isFirstFrameAfterMoving) {
+    gridFillArray[i + currentShape.position?.row - 1][
+      currentShape.previousPosition.cell + u
+    ] = 0;
+  }
+}
+function animateShape(shape: number[][]) {
+  currentShape.shape = shape;
+  const shapeLength = shape.length;
+  const shapeWidth = shape[0].length;
+  // console.log(currentShape.position?.cell);
   for (let i = shapeLength - 1; i >= 0; i--) {
     if (i + currentShape.position?.row > 9) {
       return false;
     }
-
+    let isRowFilled = false;
     for (let u = 0; u < shapeWidth; u++) {
-      // if (
-      //   shape[i][u] === 1 &&
-      //   gridFillArray[i + currentShape.position?.row][u] === 1
-      // ) {
-      //   return false;
-      // }
-      gridFillArray[i + currentShape.position?.row][u] = shape[i][u];
+      if (
+        gridFillArray[i + currentShape.position?.row][
+          currentShape.position?.cell + u
+        ] === 1
+      ) {
+        isRowFilled = true;
+        break;
+      }
+    }
+    if (!isRowFilled) {
+      for (let u = 0; u < shapeWidth; u++) {
+        removePrevFrame(i, u);
+        gridFillArray[i + currentShape.position?.row][
+          currentShape.position?.cell + u
+        ] = shape[i][u];
+      }
+    } else {
+      return false;
     }
   }
+
   currentShape.position.row += 1;
+  currentShape.isMoveLocked = false;
+  currentShape.isFirstFrameAfterMoving = false;
+  // console.log(gridFillArray);
   return true;
 }
+
 let shape: number[][] = getShape();
+
+document.addEventListener("keydown", (e) => {
+  if (currentShape.isMoveLocked) return;
+  // console.log(e.key);
+  if (e.key === "ArrowRight") {
+    currentShape.previousPosition.cell = currentShape.position.cell;
+    currentShape.position.cell += 1;
+    currentShape.isFirstFrameAfterMoving = true;
+    currentShape.isMoveLocked = true;
+  }
+  if (e.key === "ArrowLeft") {
+    currentShape.previousPosition.cell = currentShape.position.cell;
+    currentShape.position.cell -= 1;
+    currentShape.isFirstFrameAfterMoving = true;
+    currentShape.isMoveLocked = true;
+  }
+});
 
 setInterval(() => {
   const isAnimating = animateShape(shape);
-  console.log(isAnimating);
   if (!isAnimating) {
     shape = getShape();
     currentShape.position.row = 0;
